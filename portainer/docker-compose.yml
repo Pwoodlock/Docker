@@ -1,0 +1,34 @@
+##########################################################################################################
+#
+# First we start off with our services and naming networks and where to pull the docker image from.
+# Please refer to the docker documentation if you don't know what the below is about.
+#
+##########################################################################################################
+
+version: '3.8'
+
+services:
+  portainer:
+    # Update with current version, if needed. I'm not a fan of using "latest" tag, also it's considered bad practice. Using the latest for now as it's the first installation here. 
+    # Move to versioning later, after you have checked the update documentation.
+    image: portainer/portainer-ce:2.19.3
+    # image: "portainer/portainer-ce:2.18.4"
+    container_name: "portainer"
+    # We have to enable HTTP in Portainer because Traefik doesn't know how to talk to a HTTPS backend: 
+    # But we could also add the other line of code here to from our which is linked to our new traefik
+    # --label "traefik.http.services.portainer.loadBalancer.server.scheme=https"
+    command: -H unix:///var/run/docker.sock
+
+    labels:
+      # Traefik labels
+      - traefik.enable=true
+      - traefik.http.routers.portainer.rule=Host(`${PORTAINER_HOSTNAME}`)
+      - traefik.http.services.portainer.loadBalancer.server.port=9000
+      - traefik.http.routers.portainer.service=portainer
+
+    volumes:
+      # We need to expose the Docker socket to Portainer or we can't manage anything. 
+      - /var/run/docker.sock:/var/run/docker.sock
+      # We use a bind mounted volume for persistance so we can upgrade Portainer without data loss. Make sure this directory exists on the host and is writable by the user running the container.
+      - /home/patrick/docker/stacks/portainer/data:/data
+    restart: unless-stopped
