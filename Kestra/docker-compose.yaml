@@ -38,7 +38,7 @@ services:
             url: jdbc:postgresql://postgres:5432/kestra
             driverClassName: org.postgresql.Driver
             username: kestra
-            password: Patr1cKW0oDl0ck
+            password: YOUR PASSWORD
         kestra:
           server:
             basic-auth:
