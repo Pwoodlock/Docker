@@ -5,8 +5,6 @@
 #
 ##########################################################################################################
 
-version: '3.8'
-
 services:
   portainer:
     # Update with current version, if needed. I'm not a fan of using "latest" tag, also it's considered bad practice. Using the latest for now as it's the first installation here. 
