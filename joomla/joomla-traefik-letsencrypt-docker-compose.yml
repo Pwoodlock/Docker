@@ -1,0 +1,184 @@
+# Joomla with Let's Encrypt Using Docker Compose
+
+# --> IMPORTANT: Uncomment the traefik section if you want to use Traefik as a reverse proxy with Let's Encrypt certificates. 
+#
+# --> OPNsense Firewall Configuration with Caddy as a Reverse Proxy plugin.
+
+# --> Currently deployed on PVE-2 on http://10.0.0.120:80/administrator
+
+
+# Change variables in the `.env` to meet your requirements.
+# Note that the `.env` file should be in the same directory as `joomla-traefik-letsencrypt-docker-compose.yml`.
+
+# Create networks for your services before deploying the configuration using the commands:
+# `docker network create traefik-network`
+# `docker network create joomla-network`
+
+# Deploy Joomla using Docker Compose:
+# `docker compose -f joomla-traefik-letsencrypt-docker-compose.yml -p joomla up -d`
+
+
+
+networks:
+  joomla-network:
+    external: true
+#  traefik-network:
+#    external: true
+
+volumes:
+  joomla-data:
+  joomla-postgres:
+  joomla-postgres-backup:
+  joomla-data-backups:
+  joomla-database-backups:
+#  traefik-certificates:
+
+services:
+  postgres:
+    image: ${JOOMLA_POSTGRES_IMAGE_TAG}
+    volumes:
+      - joomla-postgres:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${JOOMLA_DB_NAME}
+      POSTGRES_USER: ${JOOMLA_DB_USER}
+      POSTGRES_PASSWORD: ${JOOMLA_DB_PASSWORD}
+    networks:
+      - joomla-network
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "${JOOMLA_DB_NAME}", "-U", "${JOOMLA_DB_USER}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  joomla:
+    image: ${JOOMLA_IMAGE_TAG}
+    volumes:
+      - joomla-data:${DATA_PATH}
+    environment:
+      JOOMLA_DB_TYPE: pgsql
+      JOOMLA_DB_HOST: postgres
+      JOOMLA_DB_NAME: ${JOOMLA_DB_NAME}
+      JOOMLA_DB_USER: ${JOOMLA_DB_USER}
+      JOOMLA_DB_PASSWORD: ${JOOMLA_DB_PASSWORD}
+      JOOMLA_SITE_NAME: ${JOOMLA_SITE_NAME}
+      JOOMLA_ADMIN_USER: ${JOOMLA_ADMIN_USER}
+      JOOMLA_ADMIN_USERNAME: ${JOOMLA_ADMIN_USERNAME}
+      JOOMLA_ADMIN_PASSWORD: ${JOOMLA_ADMIN_PASSWORD}
+      JOOMLA_ADMIN_EMAIL: ${JOOMLA_ADMIN_EMAIL}
+    networks:
+      - joomla-network
+#      - traefik-network
+    healthcheck:
+      test: timeout 10s bash -c ':> /dev/tcp/127.0.0.1/80' || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+#    labels:
+#      - "traefik.enable=true"
+#      - "traefik.http.routers.joomla.rule=Host(`${JOOMLA_HOSTNAME}`)"
+#      - "traefik.http.routers.joomla.service=joomla"
+#      - "traefik.http.routers.joomla.entrypoints=websecure"
+#      - "traefik.http.services.joomla.loadbalancer.server.port=80"
+#      - "traefik.http.routers.joomla.tls=true"
+#      - "traefik.http.routers.joomla.tls.certresolver=letsencrypt"
+#      - "traefik.http.services.joomla.loadbalancer.passhostheader=true"
+#      - "traefik.http.routers.joomla.middlewares=compresstraefik"
+#      - "traefik.http.middlewares.compresstraefik.compress=true"
+#      - "traefik.docker.network=traefik-network"
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      traefik:
+        condition: service_healthy
+
+#  traefik:
+#    image: ${TRAEFIK_IMAGE_TAG}
+#    command:
+#      - "--log.level=${TRAEFIK_LOG_LEVEL}"
+#      - "--accesslog=true"
+#      - "--api.dashboard=true"
+#      - "--api.insecure=true"
+#      - "--ping=true"
+#      - "--ping.entrypoint=ping"
+#      - "--entryPoints.ping.address=:8082"
+#      - "--entryPoints.web.address=:80"
+#      - "--entryPoints.websecure.address=:443"
+#      - "--providers.docker=true"
+#      - "--providers.docker.endpoint=unix:///var/run/docker.sock"
+#      - "--providers.docker.exposedByDefault=false"
+#      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+#      - "--certificatesresolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL}"
+#      - "--certificatesresolvers.letsencrypt.acme.storage=/etc/traefik/acme/acme.json"
+#      - "--metrics.prometheus=true"
+#      - "--metrics.prometheus.buckets=0.1,0.3,1.2,5.0"
+#      - "--global.checkNewVersion=true"
+#      - "--global.sendAnonymousUsage=false"
+#    volumes:
+#      - /var/run/docker.sock:/var/run/docker.sock
+#      - traefik-certificates:/etc/traefik/acme
+#    networks:
+#      - traefik-network
+#    ports:
+#      - "80:80"
+#      - "443:443"
+#    healthcheck:
+#      test: ["CMD", "wget", "http://localhost:8082/ping","--spider"]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 3
+#      start_period: 5s
+#    labels:
+#      - "traefik.enable=true"
+#      - "traefik.http.routers.dashboard.rule=Host(`${TRAEFIK_HOSTNAME}`)"
+#      - "traefik.http.routers.dashboard.service=api@internal"
+#      - "traefik.http.routers.dashboard.entrypoints=websecure"
+#      - "traefik.http.services.dashboard.loadbalancer.server.port=8080"
+#      - "traefik.http.routers.dashboard.tls=true"
+#      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
+#      - "traefik.http.services.dashboard.loadbalancer.passhostheader=true"
+#      - "traefik.http.routers.dashboard.middlewares=authtraefik"
+#      - "traefik.http.middlewares.authtraefik.basicauth.users=${TRAEFIK_BASIC_AUTH}"
+#      - "traefik.http.routers.http-catchall.rule=HostRegexp(`{host:.+}`)"
+#      - "traefik.http.routers.http-catchall.entrypoints=web"
+#      - "traefik.http.routers.http-catchall.middlewares=redirect-to-https"
+#      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+#    restart: unless-stopped
+
+  backups:
+    image: ${JOOMLA_POSTGRES_IMAGE_TAG}
+    command: >-
+      sh -c 'sleep $BACKUP_INIT_SLEEP &&
+      while true; do
+        pg_dump -h postgres -p 5432 -d $JOOMLA_DB_NAME -U $JOOMLA_DB_USER | gzip > $POSTGRES_BACKUPS_PATH/$POSTGRES_BACKUP_NAME-$(date "+%Y-%m-%d_%H-%M").gz &&
+        tar -zcpf $DATA_BACKUPS_PATH/$DATA_BACKUP_NAME-$(date "+%Y-%m-%d_%H-%M").tar.gz $DATA_PATH &&
+        find $POSTGRES_BACKUPS_PATH -type f -mtime +$POSTGRES_BACKUP_PRUNE_DAYS | xargs rm -f &&
+        find $DATA_BACKUPS_PATH -type f -mtime +$DATA_BACKUP_PRUNE_DAYS | xargs rm -f;
+        sleep $BACKUP_INTERVAL; done'
+    volumes:
+      - joomla-postgres-backup:/var/lib/postgresql/data
+      - joomla-data:${DATA_PATH}
+      - joomla-data-backups:${DATA_BACKUPS_PATH}
+      - joomla-database-backups:${POSTGRES_BACKUPS_PATH}
+    environment:
+      JOOMLA_DB_NAME: ${JOOMLA_DB_NAME}
+      JOOMLA_DB_USER: ${JOOMLA_DB_USER}
+      PGPASSWORD: ${JOOMLA_DB_PASSWORD}
+      BACKUP_INIT_SLEEP: ${BACKUP_INIT_SLEEP}
+      BACKUP_INTERVAL: ${BACKUP_INTERVAL}
+      POSTGRES_BACKUP_PRUNE_DAYS: ${POSTGRES_BACKUP_PRUNE_DAYS}
+      DATA_BACKUP_PRUNE_DAYS: ${DATA_BACKUP_PRUNE_DAYS}
+      POSTGRES_BACKUPS_PATH: ${POSTGRES_BACKUPS_PATH}
+      DATA_BACKUPS_PATH: ${DATA_BACKUPS_PATH}
+      DATA_PATH: ${DATA_PATH}
+      POSTGRES_BACKUP_NAME: ${POSTGRES_BACKUP_NAME}
+      DATA_BACKUP_NAME: ${DATA_BACKUP_NAME}
+    networks:
+      - joomla-network
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy

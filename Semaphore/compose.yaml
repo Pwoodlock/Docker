@@ -1,20 +1,45 @@
 services:
   semaphore:
-    image: semaphoreui/semaphore:v2.10.22
+    image: semaphoreui/semaphore:v2.10.22 # Check Git for updated versions without issues first.
     container_name: semaphore
     ports:
       - "3000:3000"
     environment:
-      - SEMAPHORE_DB_DIALECT=bolt
-      - SEMAPHORE_ADMIN=admin
-      - SEMAPHORE_ADMIN_PASSWORD=
-      - SEMAPHORE_ADMIN_NAME=Admin
-      - SEMAPHORE_ADMIN_EMAIL=
-      - TZ:Europe/Dublin
+      - SEMAPHORE_DB_PORT=3306
+      - SEMAPHORE_DB_DIALECT=mysql
+      - SEMAPHORE_DB_HOST=${SEMAPHORE_DB_HOST}
+      - SEMAPHORE_DB_NAME=${SEMAPHORE_DB_NAME}
+      - SEMAPHORE_DB_USER=${SEMAPHORE_DB_USER}
+      - SEMAPHORE_ADMIN=${SEMAPHORE_ADMIN}
+      - SEMAPHORE_ADMIN_PASSWORD=${SEMAPHORE_ADMIN_PASSWORD}
+      - SEMAPHORE_ADMIN_NAME=${SEMAPHORE_ADMIN_NAME}
+      - SEMAPHORE_ADMIN_EMAIL=${SEMAPHORE_ADMIN_EMAIL}
+      - SEMAPHORE_ACCESS_KEY_ENCRYPTION=${SEMAPHORE_ACCESS_KEY_ENCRYPTION}
+#      - SEMAPHORE_EMAIL_ALERT=${SEMAPHORE_EMAIL_ALERT}
+#      - SEMAPHORE_EMAIL_SENDER=${SEMAPHORE_EMAIL_SENDER}
+#      - SEMAPHORE_EMAIL_HOST=${SEMAPHORE_EMAIL_HOST}
+#      - SEMAPHORE_EMAIL_PORT=${SEMAPHORE_EMAIL_PORT}
+#      - SEMAPHORE_EMAIL_USERNAME=${SEMAPHORE_EMAIL_USERNAME}
+#      - SEMAPHORE_EMAIL_PASSWORD=${SEMAPHORE_EMAIL_PASSWORD}
+#      - SEMAPHORE_EMAIL_SECURE=${SEMAPHORE_EMAIL_SECURE}
+#      - SEMAPHORE_MAX_PARALLEL_TASKS=${SEMAPHORE_MAX_PARALLEL_TASKS}
+#      - SEMAPHORE_PASSWORD_LOGIN_DISABLED=${SEMAPHORE_PASSWORD_LOGIN_DISABLED}
+#      - SEMAPHORE_NON_ADMIN_CAN_CREATE_PROJECT=${SEMAPHORE_NON_ADMIN_CAN_CREATE_PROJECT}
+#      - SEMAPHORE_USE_REMOTE_RUNNER=${SEMAPHORE_USE_REMOTE_RUNNER}
+    # Traefik Integration below, but given that I am already piped through RBAC VPN and running all services
+    # through this, I will leave the https proxy out of the equation for now development purposes.
+    # labels:
+    #   - traefik.enable=true
+    #   - traefik.http.routers.semaphore-demo-1-https.entrypoints=websecure
+    #   - traefik.http.routers.semaphore-demo-1-https.rule=Host(`semaphore.cacs.devsec`)
+    #   - traefik.http.routers.semaphore-demo-1-https.tls=true
+    #   - traefik.http.routers.semaphore-demo-1-https.tls.certresolver=cloudflare
+    #   - traefik.http.services.semaphore-demo-1-service.loadbalancer.server.port=3000
     volumes:
       - semaphore_data:/var/lib/semaphore
       - semaphore_config:/etc/semaphore
       - tmp_config:/tmp/semaphore
+    restart: unless-stopped
 
 volumes:
   semaphore_data:
