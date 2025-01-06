@@ -57,8 +57,7 @@ services:
     volumes:
       - joomla-data:${DATA_PATH}
       - ./docker-entrypoint-custom.sh:/docker-entrypoint-custom.sh
-    entrypoint: ["/docker-entrypoint-custom.sh"]
-    command: ["apache2-foreground"]
+    entrypoint: ["/docker-entrypoint-custom.sh", "apache2-foreground"]
     environment:
       SMTP_PASSWORD: ${SMTP_PASSWORD} # Bug in Joomla 5.2.2 So we need to set the password here and docker entrypoint script will replace it in the configuration.php
       JOOMLA_DB_TYPE: pgsql
@@ -76,6 +75,8 @@ services:
       PHP_MEMORY_LIMIT: "256M"
     networks:
       - joomla-network
+    ports:
+      - "80:80"
 #      - traefik-network
     healthcheck:
       test: timeout 10s bash -c ':> /dev/tcp/127.0.0.1/80' || exit 1
@@ -99,8 +100,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      traefik:
-        condition: service_healthy
+#      traefik:
+#        condition: service_healthy
 
 #  traefik:
 #    image: ${TRAEFIK_IMAGE_TAG}
